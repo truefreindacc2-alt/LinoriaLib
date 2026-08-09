@@ -244,8 +244,6 @@ end;
             if endConn then pcall(function() endConn:Disconnect() end) end
             if renderConn then pcall(function() renderConn:Disconnect() end) end
         end)
-    end)
-end;
 
 function Library:AddToolTip(InfoStr, HoverInstance)
     local X, Y = Library:GetTextBounds(InfoStr, Library.Font, 14);
@@ -3691,4 +3689,3 @@ Players.PlayerAdded:Connect(OnPlayerChange);
 Players.PlayerRemoving:Connect(OnPlayerChange);
 
 getgenv().Library = Library
-return Library
