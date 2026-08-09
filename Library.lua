@@ -180,15 +180,29 @@ function Library:MakeDraggable(Instance, DragHandleOrCutoff)
         end;
 
         if Cutoff then
-            local MouseY = Input.Position.Y - Instance.AbsolutePosition.Y;
-            if MouseY > Cutoff then return end
+            -- Allow dragging from any of the four edges, not just the top
+            local AbsPos, AbsSize = Instance.AbsolutePosition, Instance.AbsoluteSize;
+            local MouseX, MouseY = Input.Position.X, Input.Position.Y;
+
+            local DistTop = MouseY - AbsPos.Y;
+            local DistBottom = (AbsPos.Y + AbsSize.Y) - MouseY;
+            local DistLeft = MouseX - AbsPos.X;
+            local DistRight = (AbsPos.X + AbsSize.X) - MouseX;
+
+            local NearestEdge = math.min(DistTop, DistBottom, DistLeft, DistRight);
+
+            if NearestEdge > Cutoff then
+                return;
+            end;
         end
 
         local dragging = true
-        -- Use absolute mouse location to compute initial offset so the window doesn't snap
         local dragStart = InputService:GetMouseLocation()
         local startAbsPos = Instance.AbsolutePosition
         local pointerOffset = dragStart - startAbsPos -- cursor position relative to top-left of window
+
+        -- Position is relative to AnchorPoint, not the top-left corner, so convert back to it
+        local anchor = Instance.AnchorPoint
 
         local renderConn
         renderConn = RenderStepped:Connect(function()
@@ -200,13 +214,26 @@ function Library:MakeDraggable(Instance, DragHandleOrCutoff)
             local currentMouse = InputService:GetMouseLocation()
             local newAbs = currentMouse - pointerOffset
             local parentAbsNow = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0)
+            local size = Instance.AbsoluteSize
 
             Instance.Position = UDim2.fromOffset(
-                newAbs.X - parentAbsNow.X,
-                newAbs.Y - parentAbsNow.Y
+                (newAbs.X - parentAbsNow.X) + anchor.X * size.X,
+                (newAbs.Y - parentAbsNow.Y) + anchor.Y * size.Y
             )
         end)
 
+        local endConn = InputService.InputEnded:Connect(function(eInput)
+            if not (eInput.UserInputType == Enum.UserInputType.MouseButton1 or eInput.UserInputType == Enum.UserInputType.Touch) then
+                return
+            end
+
+            dragging = false
+
+            if endConn then pcall(function() endConn:Disconnect() end) end
+            if renderConn then pcall(function() renderConn:Disconnect() end) end
+        end)
+    end)
+end;
         local endConn = InputService.InputEnded:Connect(function(eInput)
             if not (eInput.UserInputType == Enum.UserInputType.MouseButton1 or eInput.UserInputType == Enum.UserInputType.Touch) then
                 return
