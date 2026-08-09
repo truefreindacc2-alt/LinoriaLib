@@ -176,46 +176,48 @@ function Library:MakeDraggable(Instance, Cutoff)
             return;
         end;
 
-        local MousePos = InputService:GetMouseLocation();
-        local ParentPos = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0);
-        local ObjPos = Vector2.new(
-            MousePos.X - Instance.AbsolutePosition.X,
-            MousePos.Y - Instance.AbsolutePosition.Y
-        );
-
-        if ObjPos.Y > (Cutoff or 40) then
-            return;
+        if Cutoff then
+            local MouseY = Input.Position.Y - Instance.AbsolutePosition.Y;
+            if MouseY > Cutoff then
+                return;
+            end;
         end;
 
         local Dragging = true;
+        local DragStart = Input.Position;
+        local StartAbsPos = Instance.AbsolutePosition;
+        local DragInput = Input;
+        local ParentAbs = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0);
 
-        local InputChangedConn;
-        local InputEndedConn;
-
-        InputChangedConn = InputService.InputChanged:Connect(function(InputData)
-            if not Dragging then
-                return;
+        local MoveConn = InputService.InputChanged:Connect(function(InputData)
+            if InputData.UserInputType == Enum.UserInputType.MouseMovement or InputData.UserInputType == Enum.UserInputType.Touch then
+                DragInput = InputData;
             end;
-
-            if InputData.UserInputType ~= Enum.UserInputType.MouseMovement then
-                return;
-            end;
-
-            local CurrentMouse = InputService:GetMouseLocation();
-            local NewX = CurrentMouse.X - ObjPos.X - ParentPos.X;
-            local NewY = CurrentMouse.Y - ObjPos.Y - ParentPos.Y;
-
-            Instance.Position = UDim2.fromOffset(NewX, NewY);
         end);
 
-        InputEndedConn = InputService.InputEnded:Connect(function(InputData)
+        local RenderConn;
+        RenderConn = RenderStepped:Connect(function()
+            if not Dragging then
+                RenderConn:Disconnect();
+                return;
+            end;
+
+            local Delta = DragInput.Position - DragStart;
+            Instance.Position = UDim2.fromOffset(
+                StartAbsPos.X + Delta.X - ParentAbs.X,
+                StartAbsPos.Y + Delta.Y - ParentAbs.Y
+            );
+        end);
+
+        local EndConn = InputService.InputEnded:Connect(function(InputData)
             if InputData.UserInputType ~= Enum.UserInputType.MouseButton1 then
                 return;
             end;
 
             Dragging = false;
-            InputChangedConn:Disconnect();
-            InputEndedConn:Disconnect();
+            MoveConn:Disconnect();
+            EndConn:Disconnect();
+            RenderConn:Disconnect();
         end);
     end)
 end;
