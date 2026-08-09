@@ -168,57 +168,59 @@ function Library:CreateLabel(Properties, IsHud)
     return Library:Create(_Instance, Properties);
 end;
 
-function Library:MakeDraggable(Instance, Cutoff)
+function Library:MakeDraggable(Instance, DragHandleOrCutoff)
     Instance.Active = true;
 
-    Instance.InputBegan:Connect(function(Input)
-        if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+    local DragHandle = (typeof(DragHandleOrCutoff) == 'Instance' and DragHandleOrCutoff) or Instance
+    local Cutoff = (type(DragHandleOrCutoff) == 'number' and DragHandleOrCutoff) or nil
+
+    DragHandle.InputBegan:Connect(function(Input)
+        if not (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
             return;
         end;
 
         if Cutoff then
             local MouseY = Input.Position.Y - Instance.AbsolutePosition.Y;
-            if MouseY > Cutoff then
-                return;
-            end;
-        end;
+            if MouseY > Cutoff then return end
+        end
 
-        local Dragging = true;
-        local DragStart = Input.Position;
-        local StartAbsPos = Instance.AbsolutePosition;
-        local DragInput = Input;
-        local ParentAbs = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0);
+        local dragging = true
+        local dragStart = Input.Position
+        local startAbsPos = Instance.AbsolutePosition
+        local dragInput = Input
+        local parentAbs = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0)
 
-        local MoveConn = InputService.InputChanged:Connect(function(InputData)
-            if InputData.UserInputType == Enum.UserInputType.MouseMovement or InputData.UserInputType == Enum.UserInputType.Touch then
-                DragInput = InputData;
-            end;
-        end);
+        local moveConn = InputService.InputChanged:Connect(function(mInput)
+            if mInput.UserInputType == Enum.UserInputType.MouseMovement or mInput.UserInputType == Enum.UserInputType.Touch then
+                dragInput = mInput
+            end
+        end)
 
-        local RenderConn;
-        RenderConn = RenderStepped:Connect(function()
-            if not Dragging then
-                RenderConn:Disconnect();
-                return;
-            end;
+        local renderConn
+        renderConn = RenderStepped:Connect(function()
+            if not dragging then
+                if renderConn then pcall(function() renderConn:Disconnect() end) end
+                return
+            end
 
-            local Delta = DragInput.Position - DragStart;
-            Instance.Position = UDim2.fromOffset(
-                StartAbsPos.X + Delta.X - ParentAbs.X,
-                StartAbsPos.Y + Delta.Y - ParentAbs.Y
-            );
-        end);
+            local delta = dragInput.Position - dragStart
+            local newX = startAbsPos.X + delta.X - parentAbs.X
+            local newY = startAbsPos.Y + delta.Y - parentAbs.Y
 
-        local EndConn = InputService.InputEnded:Connect(function(InputData)
-            if InputData.UserInputType ~= Enum.UserInputType.MouseButton1 then
-                return;
-            end;
+            Instance.Position = UDim2.fromOffset(newX, newY)
+        end)
 
-            Dragging = false;
-            MoveConn:Disconnect();
-            EndConn:Disconnect();
-            RenderConn:Disconnect();
-        end);
+        local endConn = InputService.InputEnded:Connect(function(eInput)
+            if not (eInput.UserInputType == Enum.UserInputType.MouseButton1 or eInput.UserInputType == Enum.UserInputType.Touch) then
+                return
+            end
+
+            dragging = false
+
+            if moveConn then pcall(function() moveConn:Disconnect() end) end
+            if endConn then pcall(function() endConn:Disconnect() end) end
+            if renderConn then pcall(function() renderConn:Disconnect() end) end
+        end)
     end)
 end;
 
@@ -416,7 +418,7 @@ function Library:Unload()
     -- Unload all of the signals
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
-        Connection:Disconnect()
+        if Connection then pcall(function() Connection:Disconnect() end) end
     end
 
      -- Call our unload callback, maybe to undo some hooks etc
