@@ -1309,7 +1309,7 @@ do
 
                     Library:AttemptSave();
 
-                    Event:Disconnect();
+                    if Event then pcall(function() Event:Disconnect() end) end
                 end);
             elseif Input.UserInputType == Enum.UserInputType.MouseButton2 and not Library:MouseIsOverOpenedFrame() then
                 ModeSelectOuter.Visible = true;
@@ -1524,7 +1524,7 @@ do
                     end
                 end)
                 task.delay(timeout, function()
-                    connection:disconnect()
+                    if connection then pcall(function() connection:Disconnect() end) end
                     bindable:Fire(false)
                 end)
                 return bindable.Event:Wait()
