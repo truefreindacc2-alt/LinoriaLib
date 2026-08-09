@@ -185,16 +185,10 @@ function Library:MakeDraggable(Instance, DragHandleOrCutoff)
         end
 
         local dragging = true
-        local dragStart = Input.Position
+        -- Use absolute mouse location to compute initial offset so the window doesn't snap
+        local dragStart = InputService:GetMouseLocation()
         local startAbsPos = Instance.AbsolutePosition
-        local dragInput = Input
-        local parentAbs = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0)
-
-        local moveConn = InputService.InputChanged:Connect(function(mInput)
-            if mInput.UserInputType == Enum.UserInputType.MouseMovement or mInput.UserInputType == Enum.UserInputType.Touch then
-                dragInput = mInput
-            end
-        end)
+        local pointerOffset = dragStart - startAbsPos -- cursor position relative to top-left of window
 
         local renderConn
         renderConn = RenderStepped:Connect(function()
@@ -203,11 +197,14 @@ function Library:MakeDraggable(Instance, DragHandleOrCutoff)
                 return
             end
 
-            local delta = dragInput.Position - dragStart
-            local newX = startAbsPos.X + delta.X - parentAbs.X
-            local newY = startAbsPos.Y + delta.Y - parentAbs.Y
+            local currentMouse = InputService:GetMouseLocation()
+            local newAbs = currentMouse - pointerOffset
+            local parentAbsNow = Instance.Parent and Instance.Parent.AbsolutePosition or Vector2.new(0, 0)
 
-            Instance.Position = UDim2.fromOffset(newX, newY)
+            Instance.Position = UDim2.fromOffset(
+                newAbs.X - parentAbsNow.X,
+                newAbs.Y - parentAbsNow.Y
+            )
         end)
 
         local endConn = InputService.InputEnded:Connect(function(eInput)
@@ -217,7 +214,6 @@ function Library:MakeDraggable(Instance, DragHandleOrCutoff)
 
             dragging = false
 
-            if moveConn then pcall(function() moveConn:Disconnect() end) end
             if endConn then pcall(function() endConn:Disconnect() end) end
             if renderConn then pcall(function() renderConn:Disconnect() end) end
         end)
