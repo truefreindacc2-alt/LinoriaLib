@@ -7,7 +7,10 @@ local RunService = game:GetService('RunService')
 local TweenService = game:GetService('TweenService');
 local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
-local Mouse = InputService:GetMouseLocation();
+local Mouse = {
+    X = 0,
+    Y = 0,
+};
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
@@ -51,6 +54,10 @@ local Hue = 0
 
 table.insert(Library.Signals, RenderStepped:Connect(function(Delta)
     RainbowStep = RainbowStep + Delta
+
+    local MousePos = InputService:GetMouseLocation()
+    Mouse.X = MousePos.X
+    Mouse.Y = MousePos.Y
 
     if RainbowStep >= (1 / 60) then
         RainbowStep = 0
